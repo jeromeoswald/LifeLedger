@@ -1,0 +1,29 @@
+{
+  "name": "lifeledger",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w apps/api",
+    "dev:app": "npm run start -w apps/mobile",
+    "seed": "npm run seed -w apps/api",
+    "test": "vitest run",
+    "typecheck": "tsc -p packages/shared --noEmit && tsc -p apps/api --noEmit && tsc -p apps/mobile --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "eslint": "^9.39.0",
+    "prettier": "^3.6.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^4.0.0"
+  },
+  "allowScripts": {
+    "bcrypt@6.0.0": true,
+    "esbuild@0.28.2": true
+  }
+}

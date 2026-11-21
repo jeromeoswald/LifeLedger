@@ -1,0 +1,13 @@
+# Files EAS Build must NOT upload (replaces .gitignore for EAS when present).
+node_modules/
+**/node_modules/
+.env
+**/.env
+.expo/
+**/.expo/
+dist/
+coverage/
+*.log
+apps/mobile/android/
+apps/mobile/ios/
+.claude/
