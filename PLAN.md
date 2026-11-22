@@ -92,7 +92,7 @@ One codebase for Android, iOS and web, with data synced across devices.
 - [x] Tests: streaks across month/year boundaries, time zones, weekday and X-per-week schedules, back-filled days, latest edit wins
 - [x] Seed: 3 habits + 2 weeks of check-ins
 
-## Phase 4 — Wallet + rates service ✅ (current)
+## Phase 4 — Wallet + rates service ✅
 - [x] Accounts (cash/bank/card/savings), each with its own currency + opening balance; archive
 - [x] Transactions in any currency: income / expense / transfer
   - paying in a foreign currency moves the account by its own-currency equivalent
@@ -109,25 +109,81 @@ One codebase for Android, iOS and web, with data synced across devices.
 - [x] Home: total balance + this month's spend vs budget
 - [x] Tests: cross rates, rounding per currency (JPY/KWD), budget % + alert crossing, balances, transfers, recurring dates, rates cache/fallback/stale/503, fx endpoints
 - [x] Seed: Cash AED, Bank AED, Bank INR, 8 categories (4 with budgets), 7 sample transactions
-- [ ] → Phase 5: `/fx/history` (with the converter's history chart); → Phase 6: rates persisted on the device for offline use
+- [x] `/fx/history` (done in Phase 5); → Phase 6: rates persisted on the device for offline use
 
-## Phase 5 — Converter + reports + export
-- [ ] Converter:
-  - amount, From/To, swap, live result
-  - rate both ways, last-updated time
-  - favourite pairs, multi-convert to all favourites
-  - rate history chart (7d/30d/1y)
-- [ ] Wallet reports: income vs expense, by category, net trend, top expenses
-- [ ] CSV export
-- [ ] Home dashboard: today's tasks, habits to tick, month spend vs budget, total balance
+## Phase 5 — Converter + reports + export ✅
+- [x] Converter:
+  - amount, From/To, swap, live result (computed on-device from the cached snapshot)
+  - rate both ways, last-updated time, attribution
+  - favourite pairs (default AED→INR, AED→USD, USD→INR; star to add/remove, saved per device)
+  - multi-convert: the amount in every favourite currency
+  - rate history chart (7d/30d/1y) with low/high/% change
+- [x] `/fx/history`:
+  - Frankfurter time series with fixed USD pegs (AED, SAR, QAR, OMR, BHD), since Frankfurter has no Gulf currencies
+  - falls back to our stored daily snapshots; 6 h in-memory cache; max 370 days
+- [x] Wallet reports (base currency, frozen amounts): income vs expense + net, spending by category, 6-month net trend, top 5 expenses; month navigation
+- [x] CSV export of all transactions, including the frozen FX fields
+  - web downloads a file (UTF-8 BOM, CRLF)
+  - phones use the share sheet (as text)
+  - formula-injection safe
+- [x] Home dashboard: today's tasks, habits to tick, month spend vs budget, total balance (done in Phases 2–4)
+- [x] Charts: plain-View column charts (web + native, no chart dependency)
+- [x] Tests: month report, net trend across a year boundary, CSV escaping/injection, history (pegs, cache, snapshot fallback, range validation, endpoint)
 
-## Phase 6 — Offline sync + notifications + PWA + builds
-- [ ] Repository interface: expo-sqlite (native) / IndexedDB (web)
-- [ ] Offline queue + `POST /api/v1/sync`, latest-updatedAt-wins merge (with tests)
+## Phase 6 — Attendance & Man-hours ✅ (current, awaiting review)
+- [x] Work tab: a segmented "Tasks | Attendance"; Home: a "Today's attendance" card with the 4 status buttons (one-tap)
+- [x] Daily entry:
+  - date picker (default today, Asia/Dubai), ‹ › arrows, tap for a calendar
+  - past dates editable; future dates allow only Off and Sick Leave
+- [x] Status: Present / Off / Absent / Sick Leave (green / gray / red / orange, with icons)
+  - Off/Absent/Sick auto-save (0 h), with a "Saved" toast and Undo for 5 s
+  - Present auto-saves 8 h (the default) + 0 OT
+  - working hours 0–24 and OT 0–16 in 0.5 h steps, auto-saved after 600 ms ("Saving…" → "Saved")
+  - working + OT ≤ 24 h: an inline error, and it isn't saved
+  - switching away from Present asks to confirm, then clears the hours
+  - an optional one-line note (auto-saved); unmarked days show "Not marked"
+- [x] Week | Month views with ‹ ›; the week start is configurable (Monday by default)
+  - month: a calendar grid coloured by status, with "8+2" on Present days; tap a day to open it
+  - week: 7 rows (status, working h, OT h)
+- [x] Summary:
+  - days Present / Off / Absent / Sick / Not marked
+  - total working h, total OT h, man-hours (working + OT), average working h per Present day
+- [x] Stacked bar chart (working + OT): per day for the week, per week for the month
+- [x] Month export to CSV and Excel (.xlsx): Date, Day, Status, Working h, OT h, Total h, Note
+- [x] Settings (on the account): default working hours (8; affects new entries only), week start, show the Home card
+- [x] API:
+  - `attendance` collection (time stored as integer minutes, unique `{userId, date}`)
+  - `GET /attendance?from&to`, `PUT /attendance/:date` (idempotent upsert), `DELETE /attendance/:date` (soft)
+  - `GET /attendance/summary?period=week|month&date=`, `GET /export/attendance.csv|.xlsx?month=`
+- [x] Optimistic updates (TanStack Query) with rollback + an error toast
+- [x] Tests: summary maths (totals, averages, counts, Monday vs Sunday weeks, month boundaries), validation limits and future dates, idempotent upsert, leaving Present clears hours
+- [x] New dependencies (approved): exceljs (API), expo-file-system + expo-sharing (real .csv/.xlsx files on the phone)
+
+## Phase 7 — Offline sync & Release (after "Continue with Phase 7")
+- [ ] Offline-first sync for all modules: tasks, time sessions, daily logs, habits, check-ins, accounts, categories, transactions, attendance, settings
+  - one repository interface: expo-sqlite (Android/iOS) / IndexedDB (web)
+  - every write goes to the local store first, then to a sync queue (create/update/delete with clientId + updatedAt)
+  - `POST /api/v1/sync`: queued changes + lastSyncedAt in, server changes since then out
+  - runs on app start, on reconnect, on return to the foreground, and every 5 min while open
+  - conflicts: the latest updatedAt wins; deletes are soft
+  - a header indicator: Synced / Syncing… / Offline (n pending)
+  - cached exchange rates offline, labelled "Rates as of <date>"
 - [ ] Notifications:
-  - Android: exact alarms + an alarm channel
-  - iOS: time-sensitive notifications
-  - web: Web Push through an API scheduler
-  - each device re-schedules its local alarms after sync
-- [ ] PWA manifest + service worker
-- [ ] EAS builds (APK), deploy the API + Atlas
+  - task alarms, habit reminders and budget alerts all verified
+  - rescheduled after every sync; cancelled for deleted or completed items
+  - Android: exact alarms + an alarm channel; iOS: time-sensitive
+  - web: Web Push from an API scheduler (BullMQ or Agenda)
+- [ ] PWA: manifest, icons, theme colour, an offline service worker, an "Install app" prompt
+- [ ] Builds:
+  - EAS: an Android APK (preview), then an AAB for the Play Store; an iOS profile ready
+  - app icon, splash, name "LifeLedger", version 1.0.0
+- [ ] Deploy:
+  - API on Render or Railway + MongoDB Atlas: env vars from .env.example, CORS for the web domain, HTTPS only, helmet, rate limiting, `/health`
+  - web: the Expo web export on Vercel or Netlify, with API_URL pointing at production
+- [ ] GitHub Actions: lint + type-check + tests on every push
+- [ ] Tests:
+  - offline create → reconnect → appears on another device
+  - two devices edit the same record → the latest wins
+  - a delete propagates
+  - README manual checklist: airplane mode, PWA install, APK install
+- [ ] Hand-over: the EAS APK link, the live web URL, the API URL, and a release checklist

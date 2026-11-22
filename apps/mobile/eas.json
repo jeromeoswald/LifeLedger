@@ -14,11 +14,23 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.1.29:4000"
+        "EXPO_PUBLIC_API_URL": "https://lifeledger-api.onrender.com"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://lifeledger-api.onrender.com"
+      }
     }
+  },
+  "submit": {
+    "production": {}
   }
 }

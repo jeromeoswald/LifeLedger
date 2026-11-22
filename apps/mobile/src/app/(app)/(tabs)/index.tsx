@@ -1,6 +1,20 @@
 import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { accountBalances, approxMinor, budgetProgress, groupToday, habitStats, monthSpendByCategory, totalBalance } from '@lifeledger/shared';
+import {
+  STATUS_LABEL,
+  accountBalances,
+  approxMinor,
+  attendanceByDate,
+  budgetProgress,
+  formatHours,
+  groupToday,
+  habitStats,
+  monthSpendByCategory,
+  totalBalance,
+} from '@lifeledger/shared';
+import { StatusPicker } from '@/components/attendance/StatusPicker';
+import { InstallBanner } from '@/components/InstallBanner';
+import { useAttendance } from '@/lib/attendance';
 import { useDisplayCurrency } from '@/stores/settings';
 import { Money } from '@/components/wallet/Money';
 import { useAccounts, useCategories, useRates, useTransactions } from '@/lib/wallet';
@@ -26,6 +40,8 @@ export default function Home() {
   const { data: categories = [] } = useCategories();
   const { data: rates } = useRates();
   const display = useDisplayCurrency(user?.baseCurrency);
+  const { data: attendance = [] } = useAttendance(today, today);
+  const todayAttendance = attendanceByDate(attendance).get(today);
   if (!user) return null;
   const habitsDue = habits
     .filter((h) => !h.archivedAt)
@@ -56,6 +72,7 @@ export default function Home() {
 
   return (
     <Screen>
+      <InstallBanner />
       <P>{formatLongDate(today)}</P>
       <H1>Hello 👋</H1>
       <TimerBar session={running} task={tasks.find((t) => t.clientId === running?.taskId)} />
@@ -78,6 +95,29 @@ export default function Home() {
           {open.length > 6 ? `See all ${open.length} in Work ›` : 'Open Work ›'}
         </Text>
       </Pressable>
+
+      {user.showAttendanceCard ? (
+        <>
+          <SectionTitle>Today's attendance</SectionTitle>
+          <Card>
+            <StatusPicker date={today} today={today} entry={todayAttendance} defaultMinutes={user.attendanceDefaultMinutes} />
+            <Pressable
+              accessibilityRole="link"
+              onPress={() => router.push({ pathname: '/work', params: { section: 'attendance' } })}
+              className="mt-2 min-h-11 flex-row items-center justify-between"
+            >
+              <Text className="text-sm text-slate-600 dark:text-slate-300">
+                {todayAttendance?.status === 'present'
+                  ? `${formatHours(todayAttendance.workMinutes)} h${todayAttendance.overtimeMinutes ? ` + ${formatHours(todayAttendance.overtimeMinutes)} h OT` : ''}`
+                  : todayAttendance
+                    ? STATUS_LABEL[todayAttendance.status]
+                    : 'Not marked yet'}
+              </Text>
+              <Text className="font-semibold text-brand dark:text-brand-light">Edit hours ›</Text>
+            </Pressable>
+          </Card>
+        </>
+      ) : null}
 
       <SectionTitle>Habits to tick · {habitsDue.length}</SectionTitle>
       {habitsDue.length ? (

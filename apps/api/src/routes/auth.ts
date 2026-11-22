@@ -212,7 +212,7 @@ authRouter.get('/me', requireAuth, async (_req, res) => {
 
 authRouter.patch('/me', requireAuth, async (req, res) => {
   const input = updateMeSchema.parse(req.body);
-  const user = await UserModel.findOneAndUpdate({ _id: res.locals.userId, deletedAt: null }, input, { new: true });
+  const user = await UserModel.findOneAndUpdate({ _id: res.locals.userId, deletedAt: null }, { ...input, settingsUpdatedAt: new Date() }, { new: true });
   if (!user) throw new HttpError(401, 'Not signed in');
   res.json({ user: toUserDto(user) });
 });

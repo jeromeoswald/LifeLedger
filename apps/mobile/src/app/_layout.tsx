@@ -9,10 +9,13 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/stores/auth';
 import { boot } from '@/lib/session';
+import '@/lib/sync'; // registers the sign-in hook that binds the device store to the account
 import { useAutoLock } from '@/lib/useAutoLock';
 import { OfflineScreen } from '@/components/OfflineScreen';
+import { setupPwa } from '@/lib/pwa';
 
 void SplashScreen.preventAutoHideAsync();
+setupPwa(); // web: manifest, service worker, install prompt (no-op on phones)
 
 const brandLight = { ...DefaultTheme, colors: { ...DefaultTheme.colors, primary: '#0F766E', background: '#f8fafc' } };
 const brandDark = { ...DarkTheme, colors: { ...DarkTheme.colors, primary: '#14B8A6', background: '#020617', card: '#0f172a' } };

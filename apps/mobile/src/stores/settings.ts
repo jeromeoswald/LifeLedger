@@ -20,11 +20,21 @@ interface SettingsState {
   /** currency every balance/total/chart is shown in; null = the user's base currency */
   displayCurrency: string | null;
   setDisplayCurrency: (code: string | null) => Promise<void>;
+  /** converter favourite pairs, e.g. "AED>INR" */
+  fxFavourites: string[];
+  setFxFavourites: (pairs: string[]) => Promise<void>;
 }
+
+export const DEFAULT_FX_FAVOURITES = ['AED>INR', 'AED>USD', 'USD>INR'];
 
 export const useSettings = create<SettingsState>((set, get) => ({
   lock: DEFAULT_LOCK,
   displayCurrency: null,
+  fxFavourites: DEFAULT_FX_FAVOURITES,
+  async setFxFavourites(pairs) {
+    set({ fxFavourites: pairs });
+    await storage.set(KEYS.fxFavourites, JSON.stringify(pairs));
+  },
   async setDisplayCurrency(code) {
     set({ displayCurrency: code });
     if (code) await storage.set(KEYS.displayCurrency, code);
@@ -43,7 +53,14 @@ export const useSettings = create<SettingsState>((set, get) => ({
     } catch {
       // corrupt value: fall back to defaults
     }
-    set({ lock, displayCurrency: await storage.get(KEYS.displayCurrency).catch(() => null) });
+    let fxFavourites = DEFAULT_FX_FAVOURITES;
+    try {
+      const raw = await storage.get(KEYS.fxFavourites);
+      if (raw) fxFavourites = (JSON.parse(raw) as string[]).filter((p) => /^[A-Z]{3}>[A-Z]{3}$/.test(p));
+    } catch {
+      // corrupt value: keep defaults
+    }
+    set({ lock, fxFavourites, displayCurrency: await storage.get(KEYS.displayCurrency).catch(() => null) });
     return lock;
   },
 }));

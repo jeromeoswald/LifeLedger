@@ -9,6 +9,8 @@ export * from './habits';
 export * from './fx';
 export * from './wallet';
 export * from './schemas/wallet';
+export * from './schemas/attendance';
+export * from './attendance';
 
 export interface User {
   id: string;
@@ -16,6 +18,10 @@ export interface User {
   baseCurrency: string;
   timeZone: string;
   createdAt: string;
+  /** attendance settings */
+  attendanceDefaultMinutes: number;
+  weekStart: 0 | 1;
+  showAttendanceCard: boolean;
 }
 
 export interface AuthResponse {

@@ -93,8 +93,8 @@ export const daysBetween = (from: string, to: string) => Math.round((toUtcMs(to)
 /** 0 = Sunday … 6 = Saturday */
 export const weekday = (date: string) => new Date(toUtcMs(date)).getUTCDay();
 
-/** Monday of the week containing `date` (UAE work week starts Monday). */
-export const startOfWeek = (date: string) => addDays(date, -((weekday(date) + 6) % 7));
+/** First day of the week containing `date`; weeks start Monday (1) by default, or Sunday (0). */
+export const startOfWeek = (date: string, weekStart: 0 | 1 = 1) => addDays(date, -((weekday(date) - weekStart + 7) % 7));
 
 export const daysInMonth = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 

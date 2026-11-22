@@ -4,7 +4,7 @@ import { Schema, model, Types, type SchemaDefinition } from 'mongoose';
  * A user-owned record that syncs: client-generated clientId, client timestamps (latest updatedAt
  * wins), soft delete via deletedAt. Timestamps come from the client, so Mongoose's are off.
  */
-export function syncedModel(name: string, fields: SchemaDefinition) {
+export function syncedModel(name: string, fields: SchemaDefinition, unique?: Record<string, 1>) {
   const schema = new Schema(
     {
       userId: { type: Types.ObjectId, ref: 'User', required: true },
@@ -12,12 +12,15 @@ export function syncedModel(name: string, fields: SchemaDefinition) {
       createdAt: { type: Date, required: true },
       updatedAt: { type: Date, required: true },
       deletedAt: { type: Date, default: null },
+      /** server time of the last write; POST /sync pulls "syncedAt > lastSyncedAt" */
+      syncedAt: { type: Date, default: () => new Date() },
       ...fields,
     },
     { timestamps: false, minimize: false, versionKey: false },
   );
   schema.index({ userId: 1, clientId: 1 }, { unique: true });
-  schema.index({ userId: 1, updatedAt: 1 });
+  schema.index({ userId: 1, syncedAt: 1 });
+  if (unique) schema.index(unique, { unique: true });
   return model(name, schema);
 }
 
@@ -105,6 +108,18 @@ export const RecurringModel = syncedModel('Recurring', {
   nextDate: { type: String, required: true },
   pausedAt: { type: Date, default: null },
 });
+
+export const AttendanceModel = syncedModel(
+  'Attendance',
+  {
+    date: { type: String, required: true },
+    status: { type: String, required: true },
+    workMinutes: { type: Number, default: 0 },
+    overtimeMinutes: { type: Number, default: 0 },
+    note: { type: String, default: '' },
+  },
+  { userId: 1, date: 1 }, // one entry per user per day; PUT /attendance/:date upserts on this key
+);
 
 export const DailyLogModel = syncedModel('DailyLog', {
   date: { type: String, required: true },

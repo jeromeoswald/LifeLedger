@@ -6,12 +6,14 @@ import {
   convertMinor,
   crossRate,
   currencyCode,
+  dateStr,
   fromMinor,
   toMinor,
 } from '@lifeledger/shared';
 import { requireAuth } from '../lib/tokens';
 import { HttpError } from '../lib/http';
 import type { RatesService } from '../fx/service';
+import type { createHistoryService } from '../fx/history';
 
 const meta = (s: Awaited<ReturnType<RatesService['latest']>>) => ({
   date: s.date,
@@ -29,7 +31,7 @@ const rateOr400 = (rates: Parameters<typeof crossRate>[0], from: string, to: str
   }
 };
 
-export function fxRouter(rates: RatesService) {
+export function fxRouter(rates: RatesService, history: ReturnType<typeof createHistoryService>) {
   const r = Router();
   r.use(requireAuth);
 
@@ -67,6 +69,12 @@ export function fxRouter(rates: RatesService) {
       inverseRate: crossRate(s, q.to, q.from),
       ...meta(s),
     });
+  });
+
+  r.get('/history', async (req, res) => {
+    const q = z.object({ from: currencyCode, to: currencyCode, start: dateStr, end: dateStr }).parse(req.query);
+    const { points, source } = await history(q.from, q.to, q.start, q.end);
+    res.json({ ...q, source, points });
   });
 
   return r;

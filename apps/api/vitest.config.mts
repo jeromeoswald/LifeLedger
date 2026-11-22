@@ -8,6 +8,8 @@ export default defineConfig({
       MONGODB_URI: process.env.MONGODB_URI_TEST ?? 'mongodb://127.0.0.1:27017/lifeledger_test',
       JWT_ACCESS_SECRET: 'test-access-secret-at-least-32-chars!!',
       JWT_REFRESH_SECRET: 'test-refresh-secret-at-least-32-chars!',
+      RATE_LIMIT_PER_MIN: '100000',
+      AUTH_RATE_LIMIT_PER_15MIN: '100000',
     },
     fileParallelism: false,
     testTimeout: 20000,

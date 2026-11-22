@@ -9,6 +9,11 @@ const userSchema = new Schema(
     passwordHash: { type: String, required: true },
     baseCurrency: { type: String, required: true, default: 'AED' },
     timeZone: { type: String, required: true, default: 'Asia/Dubai' },
+    // attendance settings
+    attendanceDefaultMinutes: { type: Number, default: 480 },
+    weekStart: { type: Number, default: 1 }, // 1 = Monday, 0 = Sunday
+    showAttendanceCard: { type: Boolean, default: true },
+    settingsUpdatedAt: { type: Date, default: null }, // latest-wins for settings edited offline
     // sign-in lockout
     failedLogins: { type: Number, default: 0 },
     firstFailedAt: { type: Date, default: null },
@@ -31,4 +36,7 @@ export const toUserDto = (u: UserDoc): UserDto => ({
   baseCurrency: u.baseCurrency,
   timeZone: u.timeZone,
   createdAt: u.createdAt.toISOString(),
+  attendanceDefaultMinutes: u.attendanceDefaultMinutes ?? 480,
+  weekStart: u.weekStart === 0 ? 0 : 1,
+  showAttendanceCard: u.showAttendanceCard ?? true,
 });

@@ -35,6 +35,17 @@ export const resetPasswordSchema = z.object({
 export const updateMeSchema = z.object({
   baseCurrency: currencyCode.optional(),
   timeZone: z.string().min(1).optional(),
+  /** attendance: default working minutes for a new Present day (0.5 h steps, max 24 h) */
+  attendanceDefaultMinutes: z
+    .number()
+    .int()
+    .min(30)
+    .max(1440)
+    .refine((m) => m % 30 === 0, 'Use 0.5 h steps')
+    .optional(),
+  /** 1 = Monday, 0 = Sunday */
+  weekStart: z.union([z.literal(0), z.literal(1)]).optional(),
+  showAttendanceCard: z.boolean().optional(),
 });
 
 export type SignUpInput = z.input<typeof signUpSchema>;

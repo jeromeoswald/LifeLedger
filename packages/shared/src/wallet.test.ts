@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { budgetProgress, convertMinor, crossedBudgetThreshold, crossRate, effectiveRate, type RatesSnapshot } from './fx';
-import { accountBalances, approxMinor, dueOccurrences, monthSpendByCategory, totalBalance } from './wallet';
+import { accountBalances, approxMinor, csvCell, dueOccurrences, monthReport, monthSpendByCategory, netTrend, totalBalance, transactionsCsv } from './wallet';
+import { fromMinor } from './money';
 import { accountSchema, categorySchema, transactionSchema, type Account, type Category, type Transaction } from './schemas/wallet';
 
 const T0 = '2026-11-01T00:00:00.000Z';
@@ -153,5 +154,63 @@ describe('recurring', () => {
     const r = { nextDate: '2026-09-30', recurrence: { freq: 'monthly' as const, interval: 1, weekdays: [], monthDay: 30 }, pausedAt: null, deletedAt: null };
     expect(dueOccurrences(r, '2026-11-22')).toEqual({ dates: ['2026-09-30', '2026-10-30'], nextDate: '2026-11-30' });
     expect(dueOccurrences({ ...r, pausedAt: T0 }, '2026-11-22').dates).toEqual([]);
+  });
+});
+
+describe('wallet reports', () => {
+  const acc = account({ name: 'Bank' });
+  const inr = account({ name: 'Bank INR', currency: 'INR' });
+  const food: Category = categorySchema.parse({ ...base(), name: 'Food', kind: 'expense', icon: '🍽️' });
+  const txs = [
+    tx({ type: 'income', accountId: acc.clientId, amountMinor: 10_000_00, currency: 'AED', date: '2026-11-01' }),
+    tx({ type: 'expense', accountId: acc.clientId, amountMinor: 300_00, currency: 'AED', categoryId: food.clientId, date: '2026-11-05' }),
+    tx({ type: 'expense', accountId: acc.clientId, amountMinor: 50_00, currency: 'USD', accountAmountMinor: 183_63, date: '2026-11-06' }),
+    tx({ type: 'expense', accountId: acc.clientId, amountMinor: 2_000_00, currency: 'AED', categoryId: food.clientId, date: '2026-10-15' }),
+    tx({ type: 'transfer', accountId: acc.clientId, amountMinor: 1_000_00, currency: 'AED', toAccountId: inr.clientId, toAmountMinor: 25_400_00, toCurrency: 'INR', effectiveRate: '25.4', date: '2026-11-07' }),
+  ];
+
+  it('month: income vs expense, by category, top expenses; transfers excluded', () => {
+    const r = monthReport(txs, [food], '2026-11', 'AED', RATES);
+    const usd = convertMinor(50_00, 'USD', 'AED', '3.6725');
+    expect(r).toMatchObject({ income: 10_000_00, expense: 300_00 + usd, net: 10_000_00 - 300_00 - usd, approx: false });
+    expect(r.byCategory).toEqual([
+      { categoryId: food.clientId, name: 'Food', icon: '🍽️', amount: 300_00 },
+      { categoryId: null, name: 'Uncategorised', icon: '', amount: usd },
+    ]);
+    expect(r.topExpenses.map((t) => t.baseAmount)).toEqual([300_00, usd]);
+  });
+
+  it('a base-currency change converts old entries with latest rates and flags approx', () => {
+    const r = monthReport(txs, [food], '2026-11', 'INR', RATES);
+    expect(r.approx).toBe(true);
+    expect(r.income).toBe(convertMinor(10_000_00, 'AED', 'INR', crossRate(RATES, 'AED', 'INR')));
+  });
+
+  it('net trend runs back across a year boundary, oldest first', () => {
+    const t = netTrend(txs, '2026-11', 3, 'AED', RATES);
+    expect(t.map((m) => m.month)).toEqual(['2026-09', '2026-10', '2026-11']);
+    expect(t[1]).toEqual({ month: '2026-10', income: 0, expense: 2_000_00, net: -2_000_00 });
+    expect(netTrend([], '2026-01', 2, 'AED', RATES).map((m) => m.month)).toEqual(['2025-12', '2026-01']);
+  });
+});
+
+describe('CSV export', () => {
+  it('escapes quotes, commas and newlines, and defuses formulas', () => {
+    expect(csvCell('plain')).toBe('plain');
+    expect(csvCell('a,b')).toBe('"a,b"');
+    expect(csvCell('say "hi"')).toBe('"say ""hi"""');
+    expect(csvCell('two\nlines')).toBe('"two\nlines"');
+    expect(csvCell('=HYPERLINK("x")', true)).toBe(`"'=HYPERLINK(""x"")"`);
+    expect(csvCell('-5', false)).toBe('-5'); // numbers stay numbers
+    expect(csvCell(null)).toBe('');
+  });
+
+  it('exports every transaction with frozen FX fields', () => {
+    const a = account({ name: 'Bank, main' });
+    const t = tx({ type: 'expense', accountId: a.clientId, amountMinor: 1500, currency: 'JPY', accountAmountMinor: 35_70, note: '@lunch' });
+    const csv = transactionsCsv([t], [a], []);
+    expect(csv.startsWith('﻿date,type,account,amount,currency')).toBe(true);
+    const row = csv.trim().split('\r\n')[1]!;
+    expect(row).toBe(`2026-11-20,expense,"Bank, main",1500,JPY,,'@lunch,,,,,AED,${fromMinor(t.amountBaseMinor, 'AED')},${t.fxRateToBase},2026-11-20,test`);
   });
 });

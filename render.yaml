@@ -1,0 +1,28 @@
+# Render Blueprint for the LifeLedger API (free plan).
+# Render → New → Blueprint → pick this repo. You'll be asked for the values marked `sync: false`.
+services:
+  - type: web
+    name: lifeledger-api
+    runtime: node
+    region: frankfurt
+    plan: free
+    # only the API + shared package (skips installing the Expo app)
+    buildCommand: npm ci --workspace apps/api --workspace packages/shared --include-workspace-root
+    startCommand: npm run start:prod --workspace apps/api
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI # MongoDB Atlas connection string (paste in the Render dashboard)
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: WEB_URL # the live web app, e.g. https://lifeledger.vercel.app (Web Push contact + links)
+        sync: false
+      - key: CORS_ORIGINS # same as WEB_URL (the web app calls /api through its own domain anyway)
+        sync: false

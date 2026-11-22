@@ -1,9 +1,9 @@
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
-import { addDays, localDate } from '@lifeledger/shared';
+import { addDays, localDate, weekday } from '@lifeledger/shared';
 import { connectDb } from './db';
 import { UserModel } from './models/User';
-import { AccountModel, CategoryModel, HabitEntryModel, HabitModel, TaskModel, TransactionModel } from './models/synced';
+import { AccountModel, AttendanceModel, CategoryModel, HabitEntryModel, HabitModel, TaskModel, TransactionModel } from './models/synced';
 
 // Re-runnable: fixed clientIds + $setOnInsert never duplicate or overwrite your edits.
 const EMAIL = 'demo@lifeledger.app';
@@ -156,7 +156,35 @@ for (const s of samples) {
   );
 }
 
+// ---------- attendance: the last 14 days (today is left for you to mark) ----------
+let attendanceCount = 0;
+for (let d = 1; d <= 14; d++) {
+  const date = addDays(today, -d);
+  const wd = weekday(date);
+  const weekend = wd === 0 || wd === 6; // UAE weekend: Sat–Sun
+  const status = weekend ? 'off' : d === 9 ? 'sick' : 'present';
+  const present = status === 'present';
+  const r = await AttendanceModel.updateOne(
+    { userId: user._id, date },
+    {
+      $setOnInsert: {
+        clientId: `5eed0006-0000-4000-8000-0000000000${String(d).padStart(2, '0')}`,
+        status,
+        workMinutes: present ? 480 : 0,
+        overtimeMinutes: present && d % 3 === 0 ? 120 : 0, // some overtime
+        note: d === 9 ? 'Flu' : '',
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+      },
+    },
+    { upsert: true },
+  );
+  attendanceCount += r.upsertedCount;
+}
+
 console.log(`Seeded demo user: ${EMAIL} / ${PASSWORD}`);
+console.log(`Seeded ${attendanceCount} attendance days (existing days left untouched).`);
 console.log(`Seeded ${tasks.length} sample tasks, ${habits.length} habits, ${entryCount} habit check-ins.`);
 console.log(`Seeded ${accounts.length} accounts, ${categories.length} categories, ${samples.length} transactions.`);
 await mongoose.disconnect();

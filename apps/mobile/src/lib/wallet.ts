@@ -18,7 +18,8 @@ import {
 } from '@lifeledger/shared';
 import { useAuth } from '@/stores/auth';
 import { useToast } from '@/stores/toast';
-import { api } from './api';
+import { ApiError, api } from './api';
+import { localStore } from './store/localStore';
 import { getCached, newBase, saveRecord, useList } from './records';
 import { queryClient } from './queryClient';
 
@@ -27,15 +28,27 @@ export const useCategories = () => useList<Category>('categories');
 export const useTransactions = () => useList<Transaction>('transactions');
 export const useRecurring = () => useList<Recurring>('recurring');
 
+type Snapshot = RatesSnapshot & { attribution: { text: string; url: string } };
+
 /** Latest USD-based rates from our API (which caches the providers for 6h). */
 export function useRates() {
   const signedIn = useAuth((s) => s.status === 'signedIn');
   return useQuery({
     queryKey: ['fx'],
-    queryFn: () => api<RatesSnapshot & { attribution: { text: string; url: string } }>('/fx/latest'),
+    // Offline: the last saved snapshot, marked stale so it reads "Rates as of <date> (offline copy)".
+    queryFn: async () => {
+      try {
+        const fresh = await api<Snapshot>('/fx/latest');
+        await localStore.setMeta('fx', JSON.stringify(fresh));
+        return fresh;
+      } catch (e) {
+        const saved = await localStore.getMeta('fx');
+        if (e instanceof ApiError && e.status === 0 && saved) return { ...(JSON.parse(saved) as Snapshot), stale: true };
+        throw e;
+      }
+    },
     enabled: signedIn,
     staleTime: 60 * 60 * 1000,
-    // shortcut: rates live in memory only; Phase 6 persists the last snapshot for offline use.
   });
 }
 

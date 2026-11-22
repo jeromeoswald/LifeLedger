@@ -9,6 +9,13 @@ const schema = z.object({
   CORS_ORIGINS: z.string().default('http://localhost:8081'),
   FX_PRIMARY_URL: z.url().default('https://open.er-api.com/v6/latest/USD'),
   FX_FALLBACK_URL: z.url().default('https://api.frankfurter.dev/v1'),
+  RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(600),
+  AUTH_RATE_LIMIT_PER_15MIN: z.coerce.number().int().positive().default(50),
+  /** public web app URL (Web Push subject + links); optional in dev */
+  WEB_URL: z.url().default('http://localhost:8081'),
+  /** VAPID keys for Web Push; generated and stored in MongoDB on first start if not set */
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);

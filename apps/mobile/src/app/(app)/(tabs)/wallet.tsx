@@ -60,6 +60,14 @@ export default function Wallet() {
             <RatesNote rates={rates.data} error={rates.isError} />
           </View>
         </Card>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/wallet-reports')}
+          className="mb-2 min-h-12 flex-row items-center justify-between rounded-2xl bg-white px-4 dark:bg-slate-900"
+        >
+          <Text className="text-base text-slate-900 dark:text-white">📊 Reports & CSV export</Text>
+          <Text className="text-slate-400">›</Text>
+        </Pressable>
 
         <View className="flex-row items-center justify-between">
           <SectionTitle>Accounts</SectionTitle>

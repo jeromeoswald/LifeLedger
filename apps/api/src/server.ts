@@ -2,6 +2,7 @@ import { env } from './env';
 import { connectDb } from './db';
 import { createApp, defaultRatesService } from './app';
 import { scheduleDailyRefresh } from './fx/service';
+import { startPushScheduler } from './push/push';
 
 try {
   await connectDb();
@@ -12,6 +13,7 @@ try {
 
 const rates = defaultRatesService();
 scheduleDailyRefresh(rates); // 06:00 Asia/Dubai
+startPushScheduler(); // Web Push: task alarms + habit reminders, every minute
 // Warm the cache at start-up so the first request is fast (failures are fine: retried on demand).
 rates.latest().catch((e) => console.warn('[fx] initial fetch failed:', (e as Error).message));
 

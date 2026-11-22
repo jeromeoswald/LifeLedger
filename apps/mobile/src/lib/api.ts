@@ -3,7 +3,9 @@ import type { AuthResponse } from '@lifeledger/shared';
 import { useAuth } from '../stores/auth';
 import { KEYS, storage } from './storage';
 
-export const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000').replace(/\/$/, '');
+// 'same-origin': the web build calls /api on its own domain (Vercel proxies it), keeping sign-in cookies first-party.
+const RAW_API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
+export const API_URL = RAW_API_URL === 'same-origin' ? '' : RAW_API_URL.replace(/\/$/, '');
 const isWeb = Platform.OS === 'web';
 
 export class ApiError extends Error {
@@ -45,10 +47,17 @@ export async function rawRequest<T>(path: string, { method = 'GET', body, token 
   return data as T;
 }
 
+let onSignedIn: (userId: string) => Promise<void> = async () => {};
+/** sync.ts registers a hook that binds the device store to this user (avoids a circular import). */
+export const setOnSignedIn = (fn: (userId: string) => Promise<void>) => {
+  onSignedIn = fn;
+};
+
 /** Saves a fresh session from login/register/refresh. */
 export async function applyAuth(data: AuthResponse) {
   if (!isWeb && data.refreshToken) await storage.set(KEYS.refreshToken, data.refreshToken);
   await storage.set(KEYS.hasSession, '1');
+  await onSignedIn(data.user.id); // before any screen reads the local store
   useAuth.setState({ accessToken: data.accessToken, user: data.user, status: 'signedIn' });
 }
 
@@ -81,6 +90,23 @@ let onSessionLost: () => Promise<void> = async () => {};
 export const setOnSessionLost = (fn: () => Promise<void>) => {
   onSessionLost = fn;
 };
+
+/** Authenticated binary download (exports); on 401 refreshes once and retries. */
+export async function apiFile(path: string): Promise<ArrayBuffer> {
+  const get = (token: string | null) =>
+    fetch(`${API_URL}/api/v1${path}`, {
+      headers: { 'X-Client': isWeb ? 'web' : 'native', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: isWeb ? 'include' : 'omit',
+    });
+  let res = await get(useAuth.getState().accessToken).catch(() => null);
+  if (res?.status === 401 && (await refreshSession())) res = await get(useAuth.getState().accessToken).catch(() => null);
+  if (!res) throw new ApiError(0, `Can't reach the server at ${API_URL}`);
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new ApiError(res.status, data.error ?? `Download failed (${res.status})`);
+  }
+  return res.arrayBuffer();
+}
 
 /** Authenticated call; on 401 refreshes once and retries. */
 export async function api<T>(path: string, opts: Omit<Opts, 'token'> = {}): Promise<T> {

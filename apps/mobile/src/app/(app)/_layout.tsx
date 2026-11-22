@@ -6,6 +6,7 @@ import { useTasks } from '@/lib/work';
 import { useHabits } from '@/lib/habits';
 import { postDueRecurring, useAccounts, useRates, useRecurring, useTransactions } from '@/lib/wallet';
 import { Toast } from '@/components/Toast';
+import { useSyncTriggers } from '@/lib/sync';
 
 export default function AppLayout() {
   const user = useAuth((s) => s.user);
@@ -13,6 +14,7 @@ export default function AppLayout() {
   const { data: tasks } = useTasks();
   const { data: habits } = useHabits();
   useAlarms(tasks, habits, tz);
+  useSyncTriggers();
 
   // Post any due repeating transactions once the wallet data (and rates) are loaded.
   const accounts = useAccounts();
@@ -33,6 +35,7 @@ export default function AppLayout() {
         <Stack.Screen name="transaction/[id]" options={{ presentation: 'modal', title: 'Transaction', headerBackTitle: 'Back' }} />
         <Stack.Screen name="account/[id]" options={{ title: 'Account', headerBackTitle: 'Back' }} />
         <Stack.Screen name="categories" options={{ title: 'Categories & budgets', headerBackTitle: 'Back' }} />
+        <Stack.Screen name="wallet-reports" options={{ title: 'Wallet reports', headerBackTitle: 'Back' }} />
         <Stack.Screen name="settings/index" options={{ title: 'Settings', headerBackTitle: 'Back' }} />
         <Stack.Screen name="settings/security" options={{ title: 'Security', headerBackTitle: 'Settings' }} />
       </Stack>

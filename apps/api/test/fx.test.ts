@@ -7,6 +7,7 @@ import { connectDb } from '../src/db';
 import { createApp } from '../src/app';
 import { createRatesService, FxRateModel, CACHE_MS } from '../src/fx/service';
 import type { RateProvider } from '../src/fx/providers';
+import { createHistoryService, USD_PEGS } from '../src/fx/history';
 import { UserModel } from '../src/models/User';
 import { SessionModel } from '../src/models/Session';
 import { AccountModel, TransactionModel } from '../src/models/synced';
@@ -152,5 +153,52 @@ describe('fx + wallet endpoints', () => {
     expect(ok.body.item).toMatchObject({ amountBaseMinor: 73_45, fxRateToBase: '3.6725' });
     const bad = { ...t, clientId: randomUUID(), amountBaseMinor: 99_99 };
     expect((await request(app).put(`/api/v1/transactions/${bad.clientId}`).set('Authorization', auth).send(bad)).status).toBe(400);
+  });
+});
+
+describe('rate history', () => {
+  const series = { '2026-11-19': { INR: '93.3' }, '2026-11-20': { INR: '92.68' } };
+
+  it('uses the AED peg with Frankfurter USD rates (Frankfurter has no AED)', async () => {
+    const source = vi.fn(async () => series);
+    const h = createHistoryService(source, now);
+    const r = await h('AED', 'INR', '2026-11-19', '2026-11-20');
+    expect(source).toHaveBeenCalledWith('2026-11-19', '2026-11-20', ['INR']); // AED not requested
+    expect(r.source).toBe('frankfurter');
+    expect(r.points).toEqual([
+      { date: '2026-11-19', rate: crossRate({ rates: { AED: USD_PEGS.AED!, INR: '93.3' } }, 'AED', 'INR') },
+      { date: '2026-11-20', rate: crossRate({ rates: { AED: USD_PEGS.AED!, INR: '92.68' } }, 'AED', 'INR') },
+    ]);
+    await h('AED', 'INR', '2026-11-19', '2026-11-20');
+    expect(source).toHaveBeenCalledTimes(1); // cached
+  });
+
+  it('pegged pairs need no lookup', async () => {
+    const source = vi.fn();
+    const r = await createHistoryService(source, now)('USD', 'AED', '2026-11-01', '2026-11-20');
+    expect(source).not.toHaveBeenCalled();
+    expect(r.points.map((p) => p.rate)).toEqual(['3.6725', '3.6725']);
+  });
+
+  it('falls back to our stored daily snapshots when the source fails', async () => {
+    await FxRateModel.create({ date: '2026-11-18', source: 'exchangerate-api', rates: PRIMARY, fetchedAt: clock });
+    const r = await createHistoryService(async () => { throw new Error('down'); }, now)('AED', 'JPY', '2026-11-01', '2026-11-20');
+    expect(r).toEqual({ source: 'stored-snapshots', points: [{ date: '2026-11-18', rate: crossRate({ rates: PRIMARY }, 'AED', 'JPY') }] });
+  });
+
+  it('validates the range', async () => {
+    const h = createHistoryService(vi.fn(), now);
+    await expect(h('AED', 'INR', '2026-11-20', '2026-11-01')).rejects.toMatchObject({ status: 400 });
+    await expect(h('AED', 'INR', '2024-01-01', '2026-11-20')).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('endpoint returns points', async () => {
+    const app2 = createApp({ rates: createRatesService(fakes().primary, fakes().fallback, now), history: createHistoryService(async () => series, now) });
+    const reg = await request(app2).post('/api/v1/auth/register').set('X-Client', 'native').send({ email: 'h@example.com', password: 'password-123' });
+    const r = await request(app2).get('/api/v1/fx/history?from=AED&to=INR&start=2026-11-19&end=2026-11-20').set('Authorization', `Bearer ${reg.body.accessToken}`);
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ from: 'AED', to: 'INR', source: 'frankfurter' });
+    expect(r.body.points).toHaveLength(2);
+    expect((await request(app2).get('/api/v1/fx/history?from=AED&to=INR&start=bad&end=2026-11-20').set('Authorization', `Bearer ${reg.body.accessToken}`)).status).toBe(400);
   });
 });

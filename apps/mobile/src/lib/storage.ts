@@ -28,4 +28,7 @@ export const KEYS = {
   pinSalt: 'll.pinSalt',
   pinFails: 'll.pinFails',
   displayCurrency: 'll.displayCurrency',
+  fxFavourites: 'll.fxFavourites',
+  /** last known profile, so the app can open offline */
+  user: 'll.user',
 } as const;

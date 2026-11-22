@@ -4,6 +4,7 @@ import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useAuth } from '@/stores/auth';
 import { useDisplayCurrency, useSettings } from '@/stores/settings';
 import { CurrencyPicker } from '@/components/CurrencyPicker';
+import { SyncBadge } from '@/components/SyncBadge';
 
 const TABS: { name: string; title: string; icon: SymbolViewProps['name'] }[] = [
   { name: 'index', title: 'Home', icon: { ios: 'house', android: 'home', web: 'home' } },
@@ -47,6 +48,7 @@ function DisplayCurrencySwitch() {
 function HeaderRight() {
   return (
     <View className="flex-row items-center">
+      <SyncBadge />
       <DisplayCurrencySwitch />
       <Avatar />
     </View>

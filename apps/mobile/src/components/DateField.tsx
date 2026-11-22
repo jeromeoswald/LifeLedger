@@ -12,14 +12,16 @@ export function DateField({
   onChange,
   today,
   allowNone = true,
+  initiallyOpen = false,
 }: {
   label: string;
   value: string | null;
   onChange: (d: string | null) => void;
   today: string;
   allowNone?: boolean;
+  initiallyOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
   const [month, setMonth] = useState((value ?? today).slice(0, 8) + '01');
 
   const nextMonday = addDays(startOfWeek(today), 7);
