@@ -7,7 +7,7 @@ import { startPushScheduler } from './push/push';
 try {
   await connectDb();
 } catch (err) {
-  console.error(`Could not connect to MongoDB at ${env.MONGODB_URI}. Is it running?\n`, err);
+  console.error(`Could not connect to MongoDB at ${env.MONGODB_URI.replace(/\/\/[^@/]*@/, '//***@')}. Is it running?\n`, err);
   process.exit(1);
 }
 

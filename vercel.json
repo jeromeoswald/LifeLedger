@@ -5,7 +5,7 @@
   "outputDirectory": "apps/mobile/dist",
   "framework": null,
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://lifeledger-api.onrender.com/api/:path*" },
+    { "source": "/api/:path*", "destination": "https://lifeledger-api-dknx.onrender.com/api/:path*" },
     { "source": "/((?!.*\\.).*)", "destination": "/index.html" }
   ],
   "headers": [
