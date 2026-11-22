@@ -130,7 +130,7 @@ One codebase for Android, iOS and web, with data synced across devices.
 - [x] Charts: plain-View column charts (web + native, no chart dependency)
 - [x] Tests: month report, net trend across a year boundary, CSV escaping/injection, history (pegs, cache, snapshot fallback, range validation, endpoint)
 
-## Phase 6 — Attendance & Man-hours ✅ (current, awaiting review)
+## Phase 6 — Attendance & Man-hours ✅
 - [x] Work tab: a segmented "Tasks | Attendance"; Home: a "Today's attendance" card with the 4 status buttons (one-tap)
 - [x] Daily entry:
   - date picker (default today, Asia/Dubai), ‹ › arrows, tap for a calendar
@@ -159,8 +159,8 @@ One codebase for Android, iOS and web, with data synced across devices.
 - [x] Tests: summary maths (totals, averages, counts, Monday vs Sunday weeks, month boundaries), validation limits and future dates, idempotent upsert, leaving Present clears hours
 - [x] New dependencies (approved): exceljs (API), expo-file-system + expo-sharing (real .csv/.xlsx files on the phone)
 
-## Phase 7 — Offline sync & Release (after "Continue with Phase 7")
-- [ ] Offline-first sync for all modules: tasks, time sessions, daily logs, habits, check-ins, accounts, categories, transactions, attendance, settings
+## Phase 7 — Offline sync & Release (current: code done, deploy in progress)
+- [x] Offline-first sync for all modules: tasks, time sessions, daily logs, habits, check-ins, accounts, categories, transactions, attendance, settings
   - one repository interface: expo-sqlite (Android/iOS) / IndexedDB (web)
   - every write goes to the local store first, then to a sync queue (create/update/delete with clientId + updatedAt)
   - `POST /api/v1/sync`: queued changes + lastSyncedAt in, server changes since then out
@@ -168,20 +168,20 @@ One codebase for Android, iOS and web, with data synced across devices.
   - conflicts: the latest updatedAt wins; deletes are soft
   - a header indicator: Synced / Syncing… / Offline (n pending)
   - cached exchange rates offline, labelled "Rates as of <date>"
-- [ ] Notifications:
+- [x] Notifications (Web Push scheduler, Android exact-alarm permission, iOS time-sensitive entitlement, reschedule after sync):
   - task alarms, habit reminders and budget alerts all verified
   - rescheduled after every sync; cancelled for deleted or completed items
   - Android: exact alarms + an alarm channel; iOS: time-sensitive
   - web: Web Push from an API scheduler (BullMQ or Agenda)
-- [ ] PWA: manifest, icons, theme colour, an offline service worker, an "Install app" prompt
-- [ ] Builds:
+- [x] PWA: manifest, icons, theme colour, an offline service worker, an "Install app" prompt
+- [ ] Builds (profiles ready; APK build after the API is live):
   - EAS: an Android APK (preview), then an AAB for the Play Store; an iOS profile ready
   - app icon, splash, name "LifeLedger", version 1.0.0
-- [ ] Deploy:
+- [ ] Deploy (render.yaml + vercel.json ready; needs your Atlas/Render/Vercel accounts):
   - API on Render or Railway + MongoDB Atlas: env vars from .env.example, CORS for the web domain, HTTPS only, helmet, rate limiting, `/health`
   - web: the Expo web export on Vercel or Netlify, with API_URL pointing at production
-- [ ] GitHub Actions: lint + type-check + tests on every push
-- [ ] Tests:
+- [x] GitHub Actions: lint + type-check + tests on every push
+- [x] Tests:
   - offline create → reconnect → appears on another device
   - two devices edit the same record → the latest wins
   - a delete propagates
